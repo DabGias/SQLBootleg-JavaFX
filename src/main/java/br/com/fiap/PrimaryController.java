@@ -1,19 +1,13 @@
 package br.com.fiap;
 
-import java.io.IOException;
-import java.net.URL;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.List;
-import java.util.ResourceBundle;
 
-import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
-import javafx.fxml.Initializable;
 import javafx.scene.control.Alert;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TableColumn;
@@ -21,9 +15,8 @@ import javafx.scene.control.TableView;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.control.Alert.AlertType;
-import javafx.scene.control.cell.PropertyValueFactory;
 
-public class PrimaryController implements Initializable {
+public class PrimaryController {
     @FXML
     private TextField txtFieldUrl;
     @FXML
@@ -35,10 +28,6 @@ public class PrimaryController implements Initializable {
 
     @FXML
     private TableView<ArrayList<String>> tbViewConsulta;
-    @FXML
-    private TableColumn<ArrayList<String>, String> columnVarchar;
-    @FXML
-    private TableColumn<ArrayList<String>, String> columnNumber;
 
     public void exec() {
         try {
@@ -48,14 +37,7 @@ public class PrimaryController implements Initializable {
             if (txtAreaComando.getText().toUpperCase().trim().startsWith("SELECT")) {
                 ResultSet result = stm.executeQuery();
 
-                // TODO: Criar model e gerar um select genérico (Retorna todas as colunas de uma tabela)
-
-                // while (result.next()) {
-                //     ArrayList<String> array = new ArrayList<String>();
-                //     array.add(result.getString("id_teste"));
-                //     array.add(result.getString("nome_teste"));
-                //     tbViewConsulta.setItems(array);
-                // }
+                carregarDadosNaTabela(result);
 
             } else {
                 stm.execute();
@@ -64,17 +46,7 @@ public class PrimaryController implements Initializable {
             con.close();
             alertaConf("✔ O código foi executado com sucesso! ✔");
         } catch(SQLException e) {
-            int code = e.getErrorCode();
-
-            if (code == 1017) {
-                alertaErro("❌ Parâmetros de conexão incorretos ❌");
-            }else if (code == 17104) {
-                alertaErro("❌ Não há código para ser executado ❌");
-            } else if (code == 900) { 
-                alertaErro("❌ Existem erros no código ❌");
-            } else {
-                alertaErro("❌ Algo deu errado ❌");
-            }
+            alertaErro("❌ " + e.getMessage() + " ❌");
         } 
     }
     
@@ -96,11 +68,28 @@ public class PrimaryController implements Initializable {
         alerta.show();
     }
 
-    @Override
-    public void initialize(URL arg0, ResourceBundle arg1) {
-        //TODO: Arrumar o valor das colunas
-        
-        // columnNumber.setCellValueFactory(new PropertyValueFactory<>());
-        // columnVarchar.setCellValueFactory(new PropertyValueFactory<>());
+    private void carregarDadosNaTabela(ResultSet result) throws SQLException {
+        tbViewConsulta.getColumns().removeAll(tbViewConsulta.getColumns());
+
+        int columnCount = result.getMetaData().getColumnCount();
+
+        for (int i = 1; i <= columnCount; i++) {
+            var columnName = result.getMetaData().getColumnLabel(i);
+            TableColumn<ArrayList<String>, String> tbColumn = new TableColumn<>(columnName);
+            tbColumn.setCellValueFactory(new CallbackImp(i));
+            tbViewConsulta.getColumns().add(tbColumn);
+        }
+
+        tbViewConsulta.getItems().clear();
+
+        while (result.next()) {
+            var lista = new ArrayList<String>();
+
+            for (int i = 1; i <= columnCount; i++) {
+                lista.add(result.getString(i));
+            }
+
+            tbViewConsulta.getItems().add(lista);
+        }
     }
 }
